@@ -43,10 +43,10 @@ services:
       # Losing this key makes the stored credentials unreadable.
       - CREDENTIAL_KEYS=${CREDENTIAL_KEYS}
       - CREDENTIAL_KEY_ID=demo1
-    logging:
-      driver: loki
-      options:
-        loki-url: ${LOKI_URL}
+    # logging:
+    #   driver: loki
+    #   options:
+    #     loki-url: ${LOKI_URL}
 
   # One-off: applies the migrations and exits.
   migrate:
@@ -63,10 +63,10 @@ services:
         max_attempts: 12
     environment:
       - DATABASE_URL=mysql://flxautoconsulta:${MYSQL_PASSWORD}@db:3306/flxautoconsulta
-    logging:
-      driver: loki
-      options:
-        loki-url: ${LOKI_URL}
+    # logging:
+    #   driver: loki
+    #   options:
+    #     loki-url: ${LOKI_URL}
 
   db:
     image: mysql:8.4
@@ -93,10 +93,10 @@ services:
       timeout: 5s
       retries: 10
       start_period: 60s
-    logging:
-      driver: loki
-      options:
-        loki-url: ${LOKI_URL}
+    # logging:
+    #   driver: loki
+    #   options:
+    #     loki-url: ${LOKI_URL}
 
   panel:
     image: fabreguesm/flxautoconsulta-panel:staging
@@ -122,10 +122,10 @@ services:
       - API_URL=http://10.250.0.98:7007
       - PWA_URL=http://10.250.0.98:7009
       - ENV_LABEL=DEMO
-    logging:
-      driver: loki
-      options:
-        loki-url: ${LOKI_URL}
+    # logging:
+    #   driver: loki
+    #   options:
+    #     loki-url: ${LOKI_URL}
 
   pwa:
     image: fabreguesm/flxautoconsulta-pwa:staging
@@ -149,10 +149,10 @@ services:
         condition: any
     environment:
       - API_URL=http://10.250.0.98:7007
-    logging:
-      driver: loki
-      options:
-        loki-url: ${LOKI_URL}
+    # logging:
+    #   driver: loki
+    #   options:
+    #     loki-url: ${LOKI_URL}
 
 volumes:
   mysql_data:
