@@ -43,6 +43,7 @@ services:
       # Losing this key makes the stored credentials unreadable.
       - CREDENTIAL_KEYS=${CREDENTIAL_KEYS}
       - CREDENTIAL_KEY_ID=demo1
+      - TRUST_PROXY_HOPS=0
     # logging:
     #   driver: loki
     #   options:
