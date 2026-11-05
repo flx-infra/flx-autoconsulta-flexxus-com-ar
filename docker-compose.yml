@@ -1,0 +1,164 @@
+version: '3.6'
+
+services:
+  api:
+    image: fabreguesm/flxautoconsulta-api:staging
+    hostname: flx-autoconsulta-flexxus-com-ar
+    ports:
+      - '7007:3000'
+    networks:
+      - traefik
+      - internal
+    deploy:
+      labels:
+        - 'traefik.enable=true'
+        - 'traefik.docker.network=traefik-network'
+        - 'traefik.http.routers.${FQDN_NOTDOT}-api-http.entrypoints=web'
+        - 'traefik.http.routers.${FQDN_NOTDOT}-api-http.rule=Host(`${PS_DOMAIN}`) && PathPrefix(`/api`)'
+        - 'traefik.http.routers.${FQDN_NOTDOT}-api-http.middlewares=${FQDN_NOTDOT}-api-strip'
+        - 'traefik.http.routers.${FQDN_NOTDOT}-api-https.rule=Host(`${PS_DOMAIN}`) && PathPrefix(`/api`)'
+        - 'traefik.http.routers.${FQDN_NOTDOT}-api-https.tls=true'
+        - 'traefik.http.routers.${FQDN_NOTDOT}-api-https.tls.certresolver=myresolver'
+        - 'traefik.http.routers.${FQDN_NOTDOT}-api-https.middlewares=${FQDN_NOTDOT}-api-strip'
+        - 'traefik.http.middlewares.${FQDN_NOTDOT}-api-strip.stripprefix.prefixes=/api'
+        - 'traefik.http.services.${FQDN_NOTDOT}-api-http.loadbalancer.server.port=3000'
+      placement:
+        constraints: ['${NODE}']
+      restart_policy:
+        condition: any
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - LOG_LEVEL=info
+      - DATABASE_URL=mysql://flxautoconsulta:${MYSQL_PASSWORD}@db:3306/flxautoconsulta
+      - PUBLIC_ORIGIN=http://10.250.0.98:7009
+      - PANEL_ORIGIN=http://10.250.0.98:7008
+      - FLXWEBAPI_READINESS_URL=${FLXWEBAPI_READINESS_URL}
+      - HELPDESK_URL=${HELPDESK_URL}
+      - HELPDESK_USER=${HELPDESK_USER}
+      - HELPDESK_PASSWORD=${HELPDESK_PASSWORD}
+      - GATEWAY_URL=${GATEWAY_URL}
+      - GATEWAY_USER=${GATEWAY_USER}
+      - GATEWAY_PASSWORD=${GATEWAY_PASSWORD}
+      # Losing this key makes the stored credentials unreadable.
+      - CREDENTIAL_KEYS=${CREDENTIAL_KEYS}
+      - CREDENTIAL_KEY_ID=demo1
+    logging:
+      driver: loki
+      options:
+        loki-url: ${LOKI_URL}
+
+  # One-off: applies the migrations and exits.
+  migrate:
+    image: fabreguesm/flxautoconsulta-api:staging
+    command: ['node', 'apps/api/dist/db/migrate.js', 'latest']
+    networks:
+      - internal
+    deploy:
+      placement:
+        constraints: ['${NODE}']
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 12
+    environment:
+      - DATABASE_URL=mysql://flxautoconsulta:${MYSQL_PASSWORD}@db:3306/flxautoconsulta
+    logging:
+      driver: loki
+      options:
+        loki-url: ${LOKI_URL}
+
+  db:
+    image: mysql:8.4
+    networks:
+      - internal
+    deploy:
+      placement:
+        constraints: ['${NODE}']
+      restart_policy:
+        condition: any
+    environment:
+      - MYSQL_DATABASE=flxautoconsulta
+      - MYSQL_USER=flxautoconsulta
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test:
+        ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 -u"$$MYSQL_USER" -p"$$MYSQL_PASSWORD" --silent']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    logging:
+      driver: loki
+      options:
+        loki-url: ${LOKI_URL}
+
+  panel:
+    image: fabreguesm/flxautoconsulta-panel:staging
+    ports:
+      - '7008:80'
+    networks:
+      - traefik
+    deploy:
+      labels:
+        - 'traefik.enable=true'
+        - 'traefik.docker.network=traefik-network'
+        - 'traefik.http.routers.${FQDN_NOTDOT}-panel-http.entrypoints=web'
+        - 'traefik.http.routers.${FQDN_NOTDOT}-panel-http.rule=Host(`panel-${PS_DOMAIN}`)'
+        - 'traefik.http.routers.${FQDN_NOTDOT}-panel-https.rule=Host(`panel-${PS_DOMAIN}`)'
+        - 'traefik.http.routers.${FQDN_NOTDOT}-panel-https.tls=true'
+        - 'traefik.http.routers.${FQDN_NOTDOT}-panel-https.tls.certresolver=myresolver'
+        - 'traefik.http.services.${FQDN_NOTDOT}-panel-http.loadbalancer.server.port=80'
+      placement:
+        constraints: ['${NODE}']
+      restart_policy:
+        condition: any
+    environment:
+      - API_URL=http://10.250.0.98:7007
+      - PWA_URL=http://10.250.0.98:7009
+      - ENV_LABEL=DEMO
+    logging:
+      driver: loki
+      options:
+        loki-url: ${LOKI_URL}
+
+  pwa:
+    image: fabreguesm/flxautoconsulta-pwa:staging
+    ports:
+      - '7009:80'
+    networks:
+      - traefik
+    deploy:
+      labels:
+        - 'traefik.enable=true'
+        - 'traefik.docker.network=traefik-network'
+        - 'traefik.http.routers.${FQDN_NOTDOT}-http.entrypoints=web'
+        - 'traefik.http.routers.${FQDN_NOTDOT}-http.rule=Host(`${PS_DOMAIN}`)'
+        - 'traefik.http.routers.${FQDN_NOTDOT}-https.rule=Host(`${PS_DOMAIN}`)'
+        - 'traefik.http.routers.${FQDN_NOTDOT}-https.tls=true'
+        - 'traefik.http.routers.${FQDN_NOTDOT}-https.tls.certresolver=myresolver'
+        - 'traefik.http.services.${FQDN_NOTDOT}-http.loadbalancer.server.port=80'
+      placement:
+        constraints: ['${NODE}']
+      restart_policy:
+        condition: any
+    environment:
+      - API_URL=http://10.250.0.98:7007
+    logging:
+      driver: loki
+      options:
+        loki-url: ${LOKI_URL}
+
+volumes:
+  mysql_data:
+    name: '${SERVICE_NAME}_mysql-data'
+
+networks:
+  traefik:
+    name: traefik-network
+    external: true
+  internal:
+    driver: overlay
