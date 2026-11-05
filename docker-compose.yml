@@ -120,7 +120,7 @@ services:
         condition: any
     environment:
       - API_URL=http://10.250.0.98:7007
-      - PWA_URL=http://10.250.0.98:7009
+      # - PWA_URL=http://10.250.0.98:7009
       - ENV_LABEL=DEMO
     # logging:
     #   driver: loki
